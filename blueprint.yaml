@@ -1,0 +1,30 @@
+slug: kinesis-streamer
+type: Tutorial
+category: "Getting started"
+expertiseLevel: "Beginner"
+tags: ["Application"]
+icon: assets/hello-world.svg
+gitrepo: https://github.com/epietrowicz/kinesis-streamer
+name: "AWS Kinesis Streamer"
+shortDescription: Stream video from a camera to AWS Kinesis Video Streams.
+version: 1.0.0
+models: []
+language: [ "Python" ]
+cloudServices:
+integrations: []
+supportedDevices:
+  - name: Tachyon
+  - name: Rasberry Pi
+webIdeLink: https://go.particle.io/shared_apps/6761f677ca3d870509cd4384
+webSetupLink: part.cl/setup-tachyon
+hardwareDependencies:
+  - name: Supported device
+containers: kinesis-streamer
+introduction: |
+  Welcome to the **AWS Kinesis Streamer** for Particle! 
+
+description: |
+  The AWS Kinesis Streamer is an application that streams video from a camera to AWS Kinesis Video Streams.
+
+additionalResources:
+  - [Tachyon Edge AI Overview](https://particle.io/tachyon)

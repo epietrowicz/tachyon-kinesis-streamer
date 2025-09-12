@@ -1,0 +1,21 @@
+{
+    "dockerComposeFile": "../kinesis-streamer/docker-compose.yaml",
+    "service": "app",
+    "workspaceFolder": "/app",
+    "remoteUser": "root",
+    "shutdownAction": "stopCompose",
+    "overrideCommand": true,
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python"
+            },
+            "extensions": [
+                "ms-python.black-formatter",
+                "ms-python.debugpy",
+                "ms-python.python",
+                "ms-python.vscode-pylance"
+            ]
+        }
+    }
+}

@@ -1,0 +1,7 @@
+services:
+  app:
+    build: .
+    volumes:
+      - .:/app
+    devices:
+      - "/dev/video2:/dev/video2"
