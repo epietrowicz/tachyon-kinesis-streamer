@@ -2,8 +2,8 @@ import os, cv2, time
 from ultralytics import YOLO
 
 
-STREAM_NAME = "tachyon_test"
-AWS_REGION  = "us-east-1"
+STREAM_NAME = ""
+AWS_REGION  = ""
 
 # Use absolute paths
 BASE = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -11,9 +11,13 @@ DEVICE_CERTIFICATE_PATH = os.path.join(BASE, "certs/device-certificate.pem.crt")
 PRIVATE_KEY_PATH        = os.path.join(BASE, "certs/private-key.pem.key")
 ROOT_CA_PATH            = os.path.join(BASE, "certs/root-ca.pem")
 
-ROLE_ALIAS      = "TachyonIoTRoleAlias"
-IOT_CRED_ENDPOINT = "cd94j0i49umhb.credentials.iot.us-east-1.amazonaws.com"
-THING_NAME        = "tachyon_test"
+ROLE_ALIAS      = ""
+IOT_CRED_ENDPOINT = ""
+THING_NAME        = ""
+
+ROLE_ALIAS      = ""
+IOT_CRED_ENDPOINT = ""
+THING_NAME        = ""
 
 INFER_EVERY = 60  # run inference on every Nth frame
 

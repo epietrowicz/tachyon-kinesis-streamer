@@ -77,3 +77,4 @@ Pipfile.lock
 
 # Windows
 Thumbs.db
+certs/
