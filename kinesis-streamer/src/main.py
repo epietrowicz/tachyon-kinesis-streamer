@@ -91,22 +91,6 @@ while True:
         cv2.rectangle(frame, (x1, max(0, y1 - th - 6)), (x1 + tw + 6, y1), (0,255,0), -1)
         cv2.putText(frame, label, (x1 + 3, y1 - 4), font, 0.5, (0,0,0), 1, cv2.LINE_AA)
 
-    # Draw boxes/labels on the *same* BGR frame we’ll push
-    # if results.boxes is not None:
-    #     for b in results.boxes:
-    #         # xyxy, confidence, class
-    #         x1, y1, x2, y2 = map(int, b.xyxy[0].tolist())
-    #         conf = float(b.conf[0].item())
-    #         cls  = int(b.cls[0].item())
-    #         label = f"{model.names.get(cls, str(cls))} {conf:.2f}"
-
-    #         # rectangle + label
-    #         cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), 2)
-    #         (tw, th), bl = cv2.getTextSize(label, font, 0.5, 1)
-    #         cv2.rectangle(frame, (x1, max(0, y1 - th - 6)), (x1 + tw + 6, y1), (0,255,0), -1)
-    #         cv2.putText(frame, label, (x1 + 3, y1 - 4), font, 0.5, (0,0,0), 1, cv2.LINE_AA)
-
-
     # Push annotated frame to appsrc via OpenCV
     out.write(frame)
     frame_idx += 1
