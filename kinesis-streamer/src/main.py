@@ -1,23 +1,17 @@
 import os, cv2, time
 from ultralytics import YOLO
 
-
-STREAM_NAME = ""
-AWS_REGION  = ""
-
 # Use absolute paths
 BASE = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DEVICE_CERTIFICATE_PATH = os.path.join(BASE, "certs/device-certificate.pem.crt")
 PRIVATE_KEY_PATH        = os.path.join(BASE, "certs/private-key.pem.key")
 ROOT_CA_PATH            = os.path.join(BASE, "certs/root-ca.pem")
 
-ROLE_ALIAS      = ""
-IOT_CRED_ENDPOINT = ""
 THING_NAME        = ""
-
-ROLE_ALIAS      = ""
+STREAM_NAME = THING_NAME
+AWS_REGION  = ""
 IOT_CRED_ENDPOINT = ""
-THING_NAME        = ""
+ROLE_ALIAS      = ""
 
 INFER_EVERY = 60  # run inference on every Nth frame
 
