@@ -10,6 +10,8 @@ To run:
 - Add AWS IoT certificates into `./certs`
 - Run: `particle container run`
 
+<img height="500" alt="Hardware" src="https://github.com/user-attachments/assets/0ac8e38e-d1d1-45a5-9be4-180e1f1468a8" />
+
 The base Docker image can be [found on DockerHub](https://hub.docker.com/r/epietrowicz/kvs-producer-gst-opencv) and is built as follows:
 
 ```
