@@ -1,111 +1,114 @@
-import os
-import cv2
-import time
+import os, cv2, time
+from ultralytics import YOLO
 
-# ---- Configuration ----
+
 STREAM_NAME = "tachyon_test"
-AWS_REGION = "us-east-1"
+AWS_REGION  = "us-east-1"
 
-DEVICE_CERTIFICATE_PATH = "./certificates/device-certificate.pem.crt"
-PRIVATE_KEY_PATH = "./certificates/private-key.pem.key"
-ROOT_CA_PATH = "./certificates/root-ca.pem"
-ROLE_ALIAS = "TachyonIoTRoleAlias"
-IOT_CRED_ENDPOINT = "afevc2yjrmfjb-ats.iot.us-east-1.amazonaws.com"
-THING_NAME = "tachyon_test"
+# Use absolute paths
+BASE = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DEVICE_CERTIFICATE_PATH = os.path.join(BASE, "certs/device-certificate.pem.crt")
+PRIVATE_KEY_PATH        = os.path.join(BASE, "certs/private-key.pem.key")
+ROOT_CA_PATH            = os.path.join(BASE, "certs/root-ca.pem")
 
-# Camera parameters
-CAMERA_INDEX = 2  # /dev/video2
-FRAME_WIDTH = 1280
-FRAME_HEIGHT = 720
-FPS = 30
-BITRATE_KBPS = 2000  # video bitrate for x264 encoder
+ROLE_ALIAS      = "TachyonIoTRoleAlias"
+IOT_CRED_ENDPOINT = "cd94j0i49umhb.credentials.iot.us-east-1.amazonaws.com"
+THING_NAME        = "tachyon_test"
 
-# ---- Open camera ----
-cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_ANY)
-if not cap.isOpened():
-    raise RuntimeError(f"Could not open camera index {CAMERA_INDEX}")
+INFER_EVERY = 60  # run inference on every Nth frame
 
-# Set desired caps (best-effort)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
-cap.set(cv2.CAP_PROP_FPS, FPS)
+WIDTH, HEIGHT, FRAMERATE = 640, 480, 15
 
-# Query actual caps
-w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = cap.get(cv2.CAP_PROP_FPS) or FPS
-
-print(f"Camera opened: {w}x{h} @ {fps:.2f} fps")
-
-# ---- Build GStreamer pipeline for KVS ----
-# We will feed frames into OpenCV's VideoWriter using a GStreamer pipeline that ends at kvssink.
-# Notes:
-#  - appsrc: receives raw frames from OpenCV
-#  - videoconvert: ensure colorspace compatibility
-#  - x264enc: encodes to H.264 (baseline, low latency)
-#  - h264parse: preps the stream
-#  - kvssink: sends to Kinesis Video Streams (uses your AWS creds / region)
-
-bitrate_bps = BITRATE_KBPS * 1000
-
-gst_pipeline = (
-    "appsrc ! "
-    "videoconvert ! "
-    f"x264enc tune=zerolatency bitrate={BITRATE_KBPS} speed-preset=veryfast key-int-max={int(fps*2)} ! "
-    "video/x-h264,profile=baseline,stream-format=avc,alignment=au ! "
-    "h264parse ! "
-    # ---- kvssink with IoT certificate auth ----
-    f'kvssink stream-name="{STREAM_NAME}" aws-region="{AWS_REGION}" storage-size=128 '
-    'iot-certificate="'
-    f"iot-certificate,"
+kvssink_auth = (
+    "iot-certificate,"
     f"endpoint={IOT_CRED_ENDPOINT},"
     f"cert-path={DEVICE_CERTIFICATE_PATH},"
     f"key-path={PRIVATE_KEY_PATH},"
     f"ca-path={ROOT_CA_PATH},"
     f"role-aliases={ROLE_ALIAS},"
     f"iot-thing-name={THING_NAME}"
-    '"'
 )
 
-# OpenCV needs fourcc=0 and CAP_GSTREAMER for pipeline sinks
-writer = cv2.VideoWriter(
-    gst_pipeline, cv2.CAP_GSTREAMER, 0, fps, (w, h), True  # fourcc ignored by GStreamer
+raw_caps = f"video/x-raw,format=BGR,width={WIDTH},height={HEIGHT},framerate={FRAMERATE}/1"
+
+# https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/examples-gstreamer-plugin.html#examples-gstreamer-plugin-launch
+pipeline = (
+    f"appsrc is-live=true do-timestamp=true format=time caps={raw_caps} ! "
+    "videoconvert ! "
+    "video/x-raw,format=I420,width=640,height=480,framerate=15/1 ! "
+    "x264enc bframes=0 key-int-max=45 bitrate=500 tune=zerolatency speed-preset=veryfast ! "
+    "video/x-h264,stream-format=avc,alignment=au,profile=baseline ! "
+    "h264parse config-interval=-1 ! "
+    f'kvssink stream-name="{STREAM_NAME}" storage-size=512 aws-region="{AWS_REGION}" '
+    f'iot-certificate="{kvssink_auth}"'
 )
 
-if not writer.isOpened():
-    cap.release()
-    raise RuntimeError(
-        "Failed to open GStreamer/kvssink pipeline. "
-        "Ensure OpenCV has GStreamer and kvssink is installed."
-    )
+capture = cv2.VideoCapture(2)
+out = cv2.VideoWriter(pipeline, cv2.CAP_GSTREAMER, 0, float(FRAMERATE), (WIDTH, HEIGHT), True)
 
-print(f"Streaming to Kinesis Video Stream: {STREAM_NAME} ({AWS_REGION})")
-print("Press Ctrl+C to stop.")
+if not out.isOpened():
+    raise RuntimeError("Failed to open GStreamer VideoWriter. Check kvssink/x264enc availability and your pipeline.")
 
-# ---- Main loop ----
-try:
-    # Give kvssink a moment to initialize
-    time.sleep(0.5)
+period = 1.0 / FRAMERATE
+font   = cv2.FONT_HERSHEY_SIMPLEX
 
-    while True:
-        ok, frame = cap.read()
-        if not ok:
-            print("Frame grab failed; exiting.")
-            break
+model = YOLO("yolov8n.pt") 
 
-        # IMPORTANT: appsrc expects BGR by default here (videoconvert handles colorspace). Just write the frame.
-        writer.write(frame)
+def run_yolo(frame):
+    results = model.predict(frame, verbose=False)[0]
+    boxes = []
+    if results.boxes is not None :
+        for b in results.boxes:
+            # xyxy, confidence, class
+            x1, y1, x2, y2 = map(int, b.xyxy[0].tolist())
+            conf = float(b.conf[0].item())
+            if conf < 0.7:
+                continue
+            cls  = int(b.cls[0].item())
+            label = f"{model.names.get(cls, str(cls))} {conf:.2f}"
+            boxes.append((x1, y1, x2, y2, label))
+    return boxes
 
-        # Optional preview window (comment out for headless)
-        # cv2.imshow("Preview", frame)
-        # if cv2.waitKey(1) & 0xFF == 27:  # ESC to quit
-        #     break
+frame_idx = 0
+last_boxes = []
 
-except KeyboardInterrupt:
-    print("\nStopping stream...")
+while True:
+    ok, frame = capture.read()
+    if not ok:
+        # brief backoff if camera hiccups
+        time.sleep(0.01)
+        print("No frame")
+        continue
 
-finally:
-    writer.release()
-    cap.release()
-    cv2.destroyAllWindows()
-    print("Cleaned up.")
+    # Run YOLO (returns results for one image)
+    do_infer = (frame_idx % INFER_EVERY == 0)
+
+    if do_infer:
+        last_boxes = run_yolo(frame)
+
+    # Draw whichever boxes we have (fresh or reused)
+    for (x1, y1, x2, y2, label) in last_boxes:
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), 2)
+        (tw, th), bl = cv2.getTextSize(label, font, 0.5, 1)
+        cv2.rectangle(frame, (x1, max(0, y1 - th - 6)), (x1 + tw + 6, y1), (0,255,0), -1)
+        cv2.putText(frame, label, (x1 + 3, y1 - 4), font, 0.5, (0,0,0), 1, cv2.LINE_AA)
+
+    # Draw boxes/labels on the *same* BGR frame we’ll push
+    # if results.boxes is not None:
+    #     for b in results.boxes:
+    #         # xyxy, confidence, class
+    #         x1, y1, x2, y2 = map(int, b.xyxy[0].tolist())
+    #         conf = float(b.conf[0].item())
+    #         cls  = int(b.cls[0].item())
+    #         label = f"{model.names.get(cls, str(cls))} {conf:.2f}"
+
+    #         # rectangle + label
+    #         cv2.rectangle(frame, (x1, y1), (x2, y2), (0,255,0), 2)
+    #         (tw, th), bl = cv2.getTextSize(label, font, 0.5, 1)
+    #         cv2.rectangle(frame, (x1, max(0, y1 - th - 6)), (x1 + tw + 6, y1), (0,255,0), -1)
+    #         cv2.putText(frame, label, (x1 + 3, y1 - 4), font, 0.5, (0,0,0), 1, cv2.LINE_AA)
+
+
+    # Push annotated frame to appsrc via OpenCV
+    out.write(frame)
+    frame_idx += 1
