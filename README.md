@@ -5,7 +5,8 @@ This repository shows how to stream video to the [AWS Kinesis Video Stream servi
 
 For demonstration purposes, the stream is first annotated using the Yolo v8 library before being passed into the stream. 
 
-<img width="1247" height="766" alt="Annotated stream" src="https://github.com/user-attachments/assets/3550c7bd-4710-49f8-a96b-ba6c3026e5ba" />
+<img width="1607" height="930" alt="Annotated stream" src="https://github.com/user-attachments/assets/a86b2fd6-7812-4bb5-bdbb-23eef4c93fea" />
+
 
 To run:
 - Fill out the credentials `THING_NAME, AWS_REGION, IOT_CRED_ENDPOINT, and ROLE_ALIAS`
