@@ -1,4 +1,3 @@
-# Instead of ubuntu:20.04
 FROM epietrowicz/kvs-producer-gst-opencv
 
 # Don't let Ultralytics overwrite base image opencv-python that's been built with gstreamer
